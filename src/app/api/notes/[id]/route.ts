@@ -5,34 +5,110 @@ import client from "@/lib/db";
 
 //--------------- get particular note ------------------
 
-export async function GET(_req: Request, context: { params: { id: string } }) {
+// export async function GET(_req: Request, context: { params: { id: string } }) {
+//   const user = await getUserFromToken();
+//   const noteId = context.params.id;
+
+//   if (!user) {
+//     return NextResponse.json({ message: "Login first" }, { status: 401 });
+//   }
+
+//   try {
+//     const query = `
+//       SELECT * FROM notes 
+//       WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+//       LIMIT 1
+//     `;
+//     const values = [noteId, user.id];
+
+//     const result = await client.query(query, values);
+
+//     if (result.rows.length === 0) {
+//       return NextResponse.json({ message: "Note not found" }, { status: 404 });
+//     }
+
+//     return NextResponse.json({ note: result.rows[0] }, { status: 200 });
+//   } catch (error) {
+//     console.error("Error fetching note:", error);
+//     return NextResponse.json({ message: "Server error" }, { status: 500 });
+//   }
+// }
+
+
+
+
+
+export async function GET(_req: Request, {params}: { params: { id: string } }) {
   const user = await getUserFromToken();
-  const noteId = context.params.id;
+  const noteId = params.id.trim();
 
   if (!user) {
     return NextResponse.json({ message: "Login first" }, { status: 401 });
   }
 
+
+  console.log("noteid == "+noteId);
+  
+
   try {
     const query = `
-      SELECT * FROM notes 
-      WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+      SELECT 
+        notes.id, notes.folder_id, notes.title, notes.content,
+        notes.is_favorite, notes.is_archived,
+        notes.created_at, notes.updated_at, notes.deleted_at,
+        folders.name AS folder_name,
+        folders.created_at AS folder_created_at,
+        folders.updated_at AS folder_updated_at,
+        folders.deleted_at AS folder_deleted_at
+      FROM notes
+      LEFT JOIN folders ON notes.folder_id = folders.id
+      WHERE notes.id = $1 AND notes.user_id = $2 AND notes.deleted_at IS NULL
       LIMIT 1
     `;
     const values = [noteId, user.id];
 
+    console.log("values"+values , "queries --> "+query);
+
     const result = await client.query(query, values);
+    console.log("result==>>"+result);
+    
 
     if (result.rows.length === 0) {
       return NextResponse.json({ message: "Note not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ note: result.rows[0] }, { status: 200 });
+    const note = result.rows[0];
+    console.log("note-->"+note)
+
+    const formattedNote = {
+      id: note.id,
+      folderId: note.folder_id,
+      title: note.title,
+      isFavorite: note.is_favorite,
+      isArchived: note.is_archived,
+      createdAt: note.created_at,
+      updatedAt: note.updated_at,
+      deletedAt: note.deleted_at,
+      preview: note.content?.substring(0, 100) || "",
+      content: note.content || "",
+      folder: {
+        id: note.folder_id,
+        name: note.folder_name,
+        createdAt: note.folder_created_at,
+        updatedAt: note.folder_updated_at,
+        deletedAt: note.folder_deleted_at,
+      },
+    };
+   
+    return NextResponse.json({ note: formattedNote }, { status: 200 });
   } catch (error) {
     console.error("Error fetching note:", error);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
+
+
+
 
 
 // ------------------ update note --------------
@@ -46,7 +122,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   
     const noteId = params.id.trim();
     const body = await req.json();
-    const { title, content, folderId } = body;
+    const { title, content, folderId ,is_archived,is_favorite} = body;
   
     const updates: string[] = [];
     const values = [];
@@ -56,7 +132,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       updates.push(`title = $${index++}`);
       values.push(title);
     }
-  
+
+    if(is_archived !== undefined){
+      updates.push(`is_archived = $${index++}`);
+      values.push(is_archived);
+    }
+    if(is_favorite !== undefined){
+      updates.push(`is_favorite = $${index++}`);
+      values.push(is_favorite);
+    }
+    
     if (content !== undefined) {
       updates.push(`content = $${index++}`);
       values.push(content);
@@ -128,3 +213,8 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
 
 
 
+
+
+  //------------------ retsore a note ---------------------
+
+ 

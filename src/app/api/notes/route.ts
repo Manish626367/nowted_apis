@@ -1,6 +1,6 @@
 import client from "@/lib/db";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 
 
@@ -69,7 +69,130 @@ import { NextResponse } from "next/server";
 
 
 
-export async function GET(req: Request) {
+// export async function GET(req: Request) {
+//   const user = await getUserFromToken();
+//   const { searchParams } = new URL(req.url);
+
+//   if (!user) {
+//     return NextResponse.json({ message: "Login first" }, { status: 401 });
+//   }
+
+//   const limit = parseInt(searchParams.get('limit') || '10', 10);
+//   const favorite = searchParams.get('favorite') === 'true';
+//   const archive = searchParams.get('archive') === 'true';
+//   const deleted = searchParams.get('delete') === 'true';
+//   const folderId = searchParams.get('folderId');
+// //   const page = parseInt(searchParams.get('page') || '1');
+//   console.log(folderId)
+
+//   try {
+//     let query = `
+//       SELECT * FROM notes 
+//       WHERE user_id = $1
+//       AND is_favorite = $2
+//       AND is_archived = $3
+//       AND deleted_at ${deleted ? "IS NOT NULL" : "IS NULL"}
+//     `;
+
+//     const params: unknown[] = [user.id, favorite, archive];
+
+//     if (folderId) {
+//       query += ` AND folder_id = $${params.length + 1}`;
+//       params.push(folderId); 
+//     }
+
+//     query += ` ORDER BY updated_at DESC LIMIT $${params.length + 1}`;
+//     params.push(limit);
+
+//     const result = await client.query(query, params);
+
+//     return NextResponse.json({ notes: result.rows }, { status: 201 });
+
+//   } catch (error) {
+//     console.error('DB Error:', error);
+//     return NextResponse.json({ message: "Server error" }, { status: 500 });
+//   }
+// }
+
+
+
+
+// export async function GET(req: NextRequest) {
+//   const user = await getUserFromToken();
+//   const { searchParams } = new URL(req.url);
+
+//   if (!user) {
+//     return NextResponse.json({ message: "Login first" }, { status: 401 });
+//   }
+
+//   const archived = searchParams.get('archived');
+//   const favorite = searchParams.get('favorite');
+//   const deleted = searchParams.get('deleted');
+//   const folderId = searchParams.get('folderId');
+//   const search = searchParams.get('search') || '';
+//   const page = parseInt(searchParams.get('page') || '1', 10);
+//   const limit = parseInt(searchParams.get('limit') || '10', 10);
+//   const offset = (page - 1) * limit;
+
+//   const conditions = [`notes.user_id = $1`];
+//   const values: (string | number | boolean)[] = [user.id];
+//   let i = 2;
+
+//   if (archived !== null) {
+//     conditions.push(`notes.is_archived = $${i++}`);
+//     values.push(archived === 'true');
+//   }
+
+//   if (favorite !== null) {
+//     conditions.push(`notes.is_favorite = $${i++}`);
+//     values.push(favorite === 'true');
+//   }
+
+//   if (deleted === 'true') {
+//     conditions.push(`notes.deleted_at IS NOT NULL`);
+//   } else {
+//     conditions.push(`notes.deleted_at IS NULL`);
+//   }
+
+//   if (folderId) {
+//     conditions.push(`notes.folder_id = $${i++}`);
+//     values.push(folderId);
+//   }
+
+//   if (search) {
+//     conditions.push(`(notes.title ILIKE $${i} OR notes.content ILIKE $${i})`);
+//     values.push(`%${search}%`);
+//     i++;
+//   }
+
+//   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+//   try {
+//     const result = await client.query(
+//       `
+//       SELECT 
+//         notes.id, notes.folder_id, notes.title, notes.content,
+//         notes.is_favorite, notes.is_archived,
+//         notes.created_at, notes.updated_at,
+//         folders.name AS folderName
+//       FROM notes
+//       LEFT JOIN folders ON notes.folder_id = folders.id
+//       ${whereClause}
+//       ORDER BY notes.created_at DESC
+//       LIMIT $${i++} OFFSET $${i}
+//       `,
+//       [...values, limit, offset]
+//     );
+
+//     return NextResponse.json(result.rows);
+//   } catch (err) {
+//     console.error('GET /notes error:', err);
+//     return NextResponse.json({ error: 'server error' }, { status: 500 });
+//   }
+// }
+
+
+export async function GET(req: NextRequest) {
   const user = await getUserFromToken();
   const { searchParams } = new URL(req.url);
 
@@ -77,43 +200,93 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: "Login first" }, { status: 401 });
   }
 
-  const limit = parseInt(searchParams.get('limit') || '10', 10);
-  const favorite = searchParams.get('favorite') === 'true';
-  const archive = searchParams.get('archive') === 'true';
-  const deleted = searchParams.get('delete') === 'true';
+  const archived = searchParams.get('archived');
+  const favorite = searchParams.get('favorite');
+  const deleted = searchParams.get('deleted');
   const folderId = searchParams.get('folderId');
-//   const page = parseInt(searchParams.get('page') || '1');
-  console.log(folderId)
+  const search = searchParams.get('search') || '';
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const limit = parseInt(searchParams.get('limit') || '10', 10);
+  const offset = (page - 1) * limit;
+
+  const conditions = [`notes.user_id = $1`];
+  const values: (string | number | boolean)[] = [user.id];
+  let i = 2;
+
+  if (archived !== null) {
+    conditions.push(`notes.is_archived = $${i++}`);
+    values.push(archived === 'true');
+  }
+
+  if (favorite !== null) {
+    conditions.push(`notes.is_favorite = $${i++}`);
+    values.push(favorite === 'true');
+  }
+
+  if (deleted === 'true') {
+    conditions.push(`notes.deleted_at IS NOT NULL`);
+  } else {
+    conditions.push(`notes.deleted_at IS NULL`);
+  }
+
+  if (folderId) {
+    conditions.push(`notes.folder_id = $${i++}`);
+    values.push(folderId);
+  }
+
+  if (search) {
+    conditions.push(`(notes.title ILIKE $${i} OR notes.content ILIKE $${i})`);
+    values.push(`%${search}%`);
+    i++;
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   try {
-    let query = `
-      SELECT * FROM notes 
-      WHERE user_id = $1
-      AND is_favorite = $2
-      AND is_archived = $3
-      AND deleted_at ${deleted ? "IS NOT NULL" : "IS NULL"}
-    `;
+    const result = await client.query(
+      `
+      SELECT 
+        notes.id, notes.folder_id, notes.title, notes.content,
+        notes.is_favorite, notes.is_archived,
+        notes.created_at, notes.updated_at, notes.deleted_at,
+        folders.id AS folder_id, folders.name AS folder_name,
+        folders.created_at AS folder_created_at,
+        folders.updated_at AS folder_updated_at,
+        folders.deleted_at AS folder_deleted_at
+      FROM notes
+      LEFT JOIN folders ON notes.folder_id = folders.id
+      ${whereClause}
+      ORDER BY notes.created_at DESC
+      LIMIT $${i++} OFFSET $${i}
+      `,
+      [...values, limit, offset]
+    );
 
-    const params: unknown[] = [user.id, favorite, archive];
+    const formattedNotes = result.rows.map((note) => ({
+      id: note.id,
+      folderId: note.folder_id,
+      title: note.title,
+      isFavorite: note.is_favorite,
+      isArchived: note.is_archived,
+      createdAt: note.created_at,
+      updatedAt: note.updated_at,
+      deletedAt: note.deleted_at,
+      content: note.content?.substring(0, 100) || "", 
+      folder: {
+        id: note.folder_id,
+        name: note.folder_name,
+        createdAt: note.folder_created_at,
+        updatedAt: note.folder_updated_at,
+        deletedAt: note.folder_deleted_at,
+      }
+    }));
 
-    if (folderId) {
-      query += ` AND folder_id = $${params.length + 1}`;
-      params.push(folderId); 
-    }
-
-    query += ` ORDER BY updated_at DESC LIMIT $${params.length + 1}`;
-    params.push(limit);
-
-    const result = await client.query(query, params);
-
-    return NextResponse.json({ notes: result.rows }, { status: 201 });
-
-  } catch (error) {
-    console.error('DB Error:', error);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return NextResponse.json({ notes: formattedNotes },{status:201});
+  } catch (err) {
+    console.error('GET /notes error:', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-
 
 
 
@@ -146,7 +319,7 @@ export async function POST(req: Request) {
         }
     
         await client.query('insert into notes (folder_id, user_id, title, content, is_favorite, is_archived) values($1,$2,$3,$4,$5,$6)',[folderId,user.id,title,content,is_favorite,is_archived])
-
+        
         return NextResponse.json({message:"new note created sucessfully"},{status:201});
         
       } catch (error) {

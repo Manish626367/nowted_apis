@@ -23,7 +23,8 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
       return NextResponse.json({ message: 'Folder not found or unauthorized' }, { status: 404 });
     }
 
-    await client.query('UPDATE folders SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1', [folderId]);
+    await client.query('update folders SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1', [folderId]);
+    await client.query('update notes set deleted_at = current_timestamp where folder_id = $1',[folderId])
 
     return NextResponse.json({ message: 'Folder deleted successfully' }, { status: 200 });
   } catch (error) {
