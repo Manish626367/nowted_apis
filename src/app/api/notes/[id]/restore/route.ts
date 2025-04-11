@@ -3,14 +3,16 @@
 
 
 import client from "@/lib/db";
-import { getUserFromToken } from "@/lib/getUserFromToken";
 import { NextResponse } from "next/server";
 
+
 export async function PATCH(_req: Request, { params }: { params: { id: string } }) {
-  const user = await getUserFromToken();
+
   const noteId = params.id.trim();
+  const userId = _req.headers.get('user-id');
+  const userEmail = _req.headers.get('user-email');
   
-  if (!user) {
+  if (!userId || !userEmail) {
     return NextResponse.json({ message: "Login first" }, { status: 401 });
   }
 
@@ -22,7 +24,7 @@ export async function PATCH(_req: Request, { params }: { params: { id: string } 
       WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL
       LIMIT 1
     `;
-    const noteResult = await client.query(noteCheckQuery, [noteId, user.id]);
+    const noteResult = await client.query(noteCheckQuery, [noteId, userId]);
 
     if (noteResult.rows.length === 0) {
       return NextResponse.json(
@@ -41,7 +43,7 @@ export async function PATCH(_req: Request, { params }: { params: { id: string } 
         WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL
         LIMIT 1
       `;
-      const folderResult = await client.query(folderCheckQuery, [folderId, user.id]);
+      const folderResult = await client.query(folderCheckQuery, [folderId, userId]);
 
       if (folderResult.rows.length > 0) {
         const restoreFolderQuery = `
@@ -49,20 +51,20 @@ export async function PATCH(_req: Request, { params }: { params: { id: string } 
           SET deleted_at = NULL, updated_at = NOW()
           WHERE id = $1 AND user_id = $2
         `;
-        await client.query(restoreFolderQuery, [folderId, user.id]);
+        await client.query(restoreFolderQuery, [folderId, userId]);
         folderRestored = true;
       }
     }
 
     // 3. Restore the note
-    //replace * -> id, title, folder_id, created_at, updated_at (if not worked)
+
     const restoreNoteQuery = `
       UPDATE notes
-      SET deleted_at = NULL, updated_at = NOW()
+      SET deleted_at = NULL, updated_at = current_timestamp
       WHERE id = $1 AND user_id = $2
       RETURNING *
     `;
-    const restoredNote = await client.query(restoreNoteQuery, [noteId, user.id]);
+    const restoredNote = await client.query(restoreNoteQuery, [noteId, userId]);
 
     return NextResponse.json({ 
       message: "Note restored successfully" + (folderRestored ? " (with folder)" : ""),

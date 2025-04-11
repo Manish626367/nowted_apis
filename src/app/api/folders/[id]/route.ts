@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import client from '../../../../lib/db';
-import { getUserFromToken } from '../../../../lib/getUserFromToken';
+
 
 
 //------------------------delete folder by id -----------------------------//
@@ -8,15 +8,15 @@ import { getUserFromToken } from '../../../../lib/getUserFromToken';
 export async function DELETE(_req: Request, context: { params: { id: string } }) {
 
   const folderId = context.params.id;
-  const user = await getUserFromToken();
 
-  if (!user) return NextResponse.json({ message: 'you are not allowed to delete ' }, { status: 401 });
+  const userEmail = _req.headers.get('user-email');
+
 
   try {
     
     const folder = await client.query(
       'SELECT * FROM folders WHERE id = $1 AND user_id = (SELECT id FROM users WHERE email = $2)',
-      [folderId, user.email]
+      [folderId, userEmail]
     );
 
     if (folder.rows.length === 0) {
@@ -41,23 +41,25 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
 export async function PATCH(req: Request, context: { params: { id: string } }){
 
   const folderId = context.params.id;
-  const user = await getUserFromToken();
+
+    const userId = req.headers.get('user-id');
+    const userEmail = req.headers.get('user-email');
 
   const {name} = await req.json()
 
-  if(!user) return NextResponse.json({message:"you are not allowed to update "},{status:404})
+  if(!userId || !userEmail) return NextResponse.json({message:"you are not allowed to update "},{status:404})
 
   try {
     
     const folder = await client.query(
-      'select *from folders where id = $1 and user_id = (select id from users where email = $2) ',[folderId,user.email]
+      'select *from folders where id = $1 and user_id = (select id from users where email = $2) ',[folderId,userEmail]
     );
 
     if (folder.rows.length === 0) {
       return NextResponse.json({ message: 'Folder not found or unauthorized' }, { status: 404 });
     }
 
-    await client.query('update folders set name = $1 where id = $2',[name,folderId])
+    await client.query('update folders set name = $1 , updated_at = current_timestamp where id = $2',[name,folderId])
     return NextResponse.json({message:"name upadted correctly "},{status:200});
     
   } catch (error) {

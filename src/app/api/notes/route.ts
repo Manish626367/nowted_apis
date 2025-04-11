@@ -1,19 +1,17 @@
 import client from "@/lib/db";
-import { getUserFromToken } from "@/lib/getUserFromToken";
 import { NextRequest, NextResponse } from "next/server";
 
 
 
 //--------------------get all notes -----------------//
 
-
-
-
 export async function GET(req: NextRequest) {
-  const user = await getUserFromToken();
+  
+  const userId = req.headers.get('user-id');
+  const userEmail = req.headers.get('user-email');
   const { searchParams } = new URL(req.url);
 
-  if (!user) {
+  if (!userId || !userEmail) {
     return NextResponse.json({ message: "Login first" }, { status: 401 });
   }
 
@@ -27,7 +25,7 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit;
 
   const conditions = [`notes.user_id = $1`];
-  const values: (string | number | boolean)[] = [user.id];
+  const values: (string | number | boolean)[] = [userId];
   let i = 2;
 
   if (archived !== null) {
@@ -73,7 +71,7 @@ export async function GET(req: NextRequest) {
       FROM notes
       LEFT JOIN folders ON notes.folder_id = folders.id
       ${whereClause}
-      ORDER BY notes.created_at DESC
+      ORDER BY notes.updated_at DESC
       LIMIT $${i++} OFFSET $${i}
       `,
       [...values, limit, offset]
@@ -114,8 +112,10 @@ export async function GET(req: NextRequest) {
 
 
 export async function POST(req: Request) {
-    const user = await getUserFromToken();
-    if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
+    const userId = req.headers.get('user-id');
+    const userEmail = req.headers.get('user-email');
+    if (!userId || !userEmail) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   
     const { folderId,title,content,is_favorite,is_archived  } = await req.json();
 
@@ -123,14 +123,14 @@ export async function POST(req: Request) {
     try {
     
         const folder = await client.query(
-          'select *from folders where id = $1 and user_id = (select id from users where email = $2) and deleted_at is null',[folderId,user.email]
+          'select *from folders where id = $1 and user_id = (select id from users where email = $2) and deleted_at is null',[folderId,userEmail]
         );
     
         if (folder.rows.length === 0) {
           return NextResponse.json({ message: 'Folder not found ' }, { status: 404 });
         }
     
-        await client.query('insert into notes (folder_id, user_id, title, content, is_favorite, is_archived) values($1,$2,$3,$4,$5,$6)',[folderId,user.id,title,content,is_favorite,is_archived])
+        await client.query('insert into notes (folder_id, user_id, title, content, is_favorite, is_archived) values($1,$2,$3,$4,$5,$6)',[folderId,userId,title,content,is_favorite,is_archived])
         
         return NextResponse.json({message:"new note created sucessfully"},{status:201});
         

@@ -1,15 +1,15 @@
-// src/app/api/notes/recent/route.ts
+
 
 import client from "@/lib/db";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-
-  const user = await getUserFromToken();
+export async function GET(req: NextRequest) {
 
 
-  if (!user) {
+  const userId = req.headers.get('user-id');
+  const userEmail = req.headers.get('user-email');
+
+  if (!userId || !userEmail) {
     return NextResponse.json({ message: "Login first" }, { status: 401 });
   }
   try {
@@ -29,7 +29,7 @@ export async function GET() {
       ORDER BY notes.updated_at DESC
       LIMIT 3
       `,
-      [user.id]
+      [userId]
     );
   
     const recentNotes = result.rows.map((note) => ({

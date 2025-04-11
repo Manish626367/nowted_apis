@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getUserFromToken } from '../../../../lib/getUserFromToken'
 import client from "@/lib/db";
 
 
@@ -7,18 +6,18 @@ import client from "@/lib/db";
 
 
 
-
-
 export async function GET(_req: Request, {params}: { params: { id: string } }) {
-  const user = await getUserFromToken();
+  
+  const userId = _req.headers.get('user-id');
+  const userEmail = _req.headers.get('user-email');
+
+  
   const noteId = params.id.trim();
 
-  if (!user) {
+
+  if (!userId || !userEmail) {
     return NextResponse.json({ message: "Login first" }, { status: 401 });
   }
-
-
-  // console.log("noteid == "+noteId);
   
 
   try {
@@ -36,12 +35,10 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
       WHERE notes.id = $1 AND notes.user_id = $2 AND notes.deleted_at IS NULL
       LIMIT 1
     `;
-    const values = [noteId, user.id];
+    const values = [noteId, userId];
 
-    // console.log("values"+values , "queries --> "+query);
 
     const result = await client.query(query, values);
-    // console.log("result==>>"+result);
     
 
     if (result.rows.length === 0) {
@@ -49,7 +46,7 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
     }
 
     const note = result.rows[0];
-    console.log("note-->"+note)
+
 
     const formattedNote = {
       id: note.id,
@@ -86,8 +83,11 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
 
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-    const user = await getUserFromToken();
-    if (!user) {
+   
+    const userId = req.headers.get('user-id');
+    const userEmail = req.headers.get('user-email');
+    
+    if (!userId || !userEmail) {
       return NextResponse.json({ error: "Login first" }, { status: 401 });
     }
   
@@ -129,12 +129,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   
     const query = `
       UPDATE notes 
-      SET ${updates.join(", ")}, updated_at = NOW()
+      SET ${updates.join(", ")}, updated_at = current_timestamp
       WHERE id = $${index++} AND user_id = $${index}
       RETURNING *;
     `;
   
-    values.push(noteId, user.id);
+    values.push(noteId, userId);
     console.log("QUERY:", query.trim());
     console.log("VALUES:", values);
   
@@ -164,15 +164,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, context: { params: { id: string } }) {
 
     const noteId = context.params.id.trim();
-    const user = await getUserFromToken();
+   
+    const userId = _req.headers.get('user-id');
+    const userEmail = _req.headers.get('user-email');
   
-    if (!user) return NextResponse.json({ message: 'you are not allowed to delete ' }, { status: 401 });
+    if (!userId || !userEmail) return NextResponse.json({ message: 'you are not allowed to delete ' }, { status: 401 });
   
     try {
       
    
       
-      await client.query('UPDATE notes SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 and user_id = $2', [noteId,user.id]);
+      await client.query('UPDATE notes SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 and user_id = $2', [noteId,userId]);
   
       return NextResponse.json({ message: 'note deleted successfully' }, { status: 200 });
     } catch (error) {

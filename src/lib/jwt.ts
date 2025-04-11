@@ -29,6 +29,9 @@ export const verifyToken = async (token: string): Promise<JwtPayload | null> => 
   try {
     const { payload } = await jwtVerify(token, secret);
 
+    console.log(payload);
+    
+
 
     if (
       typeof payload.email === 'string' &&
