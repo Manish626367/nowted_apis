@@ -5,35 +5,6 @@ import client from "@/lib/db";
 
 //--------------- get particular note ------------------
 
-// export async function GET(_req: Request, context: { params: { id: string } }) {
-//   const user = await getUserFromToken();
-//   const noteId = context.params.id;
-
-//   if (!user) {
-//     return NextResponse.json({ message: "Login first" }, { status: 401 });
-//   }
-
-//   try {
-//     const query = `
-//       SELECT * FROM notes 
-//       WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
-//       LIMIT 1
-//     `;
-//     const values = [noteId, user.id];
-
-//     const result = await client.query(query, values);
-
-//     if (result.rows.length === 0) {
-//       return NextResponse.json({ message: "Note not found" }, { status: 404 });
-//     }
-
-//     return NextResponse.json({ note: result.rows[0] }, { status: 200 });
-//   } catch (error) {
-//     console.error("Error fetching note:", error);
-//     return NextResponse.json({ message: "Server error" }, { status: 500 });
-//   }
-// }
-
 
 
 
@@ -47,7 +18,7 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
   }
 
 
-  console.log("noteid == "+noteId);
+  // console.log("noteid == "+noteId);
   
 
   try {
@@ -67,10 +38,10 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
     `;
     const values = [noteId, user.id];
 
-    console.log("values"+values , "queries --> "+query);
+    // console.log("values"+values , "queries --> "+query);
 
     const result = await client.query(query, values);
-    console.log("result==>>"+result);
+    // console.log("result==>>"+result);
     
 
     if (result.rows.length === 0) {
@@ -213,8 +184,5 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
 
 
 
-
-
-  //------------------ retsore a note ---------------------
 
  
