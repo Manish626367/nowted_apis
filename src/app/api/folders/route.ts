@@ -3,8 +3,7 @@ import client from '../../../lib/db';
 
 
 
-//--------get all folders ------------//
-
+//-------------------get all folders ----------------------//
 
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('user-id');
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
   try {
     const folders = await client.query(
       'SELECT * FROM folders WHERE user_id = $1 AND deleted_at IS NULL order by updated_at desc',
-      [userId]
+      [userId] 
     );
 
     return NextResponse.json({ folders: folders.rows }, { status: 200 });

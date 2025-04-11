@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
 
-
   const userId = req.headers.get('user-id');
   const userEmail = req.headers.get('user-email');
 

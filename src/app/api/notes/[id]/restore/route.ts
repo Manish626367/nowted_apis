@@ -1,7 +1,5 @@
 
 
-
-
 import client from "@/lib/db";
 import { NextResponse } from "next/server";
 
@@ -18,7 +16,7 @@ export async function PATCH(_req: Request, { params }: { params: { id: string } 
 
 
   try {
-    // 1. Check if note exists and is deleted
+    // 1. Check if there note exists and is deleted
     const noteCheckQuery = `
       SELECT id, folder_id FROM notes 
       WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL

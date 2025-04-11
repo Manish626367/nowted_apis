@@ -5,21 +5,17 @@ import client from "@/lib/db";
 //--------------- get particular note ------------------
 
 
-
 export async function GET(_req: Request, {params}: { params: { id: string } }) {
   
   const userId = _req.headers.get('user-id');
   const userEmail = _req.headers.get('user-email');
 
-  
   const noteId = params.id.trim();
-
 
   if (!userId || !userEmail) {
     return NextResponse.json({ message: "Login first" }, { status: 401 });
   }
   
-
   try {
     const query = `
       SELECT 
@@ -37,16 +33,13 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
     `;
     const values = [noteId, userId];
 
-
     const result = await client.query(query, values);
     
-
     if (result.rows.length === 0) {
       return NextResponse.json({ message: "Note not found" }, { status: 404 });
     }
 
     const note = result.rows[0];
-
 
     const formattedNote = {
       id: note.id,
@@ -74,7 +67,6 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
-
 
 
 
@@ -156,9 +148,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   
 
 
+
   //------------------ delete particular note ---------------------
-
-
 
   
 export async function DELETE(_req: Request, context: { params: { id: string } }) {
@@ -172,11 +163,10 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
   
     try {
       
-   
-      
       await client.query('UPDATE notes SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 and user_id = $2', [noteId,userId]);
   
       return NextResponse.json({ message: 'note deleted successfully' }, { status: 200 });
+
     } catch (error) {
       console.error('Error deleting note:', error);
       return NextResponse.json({ message: 'Server error' }, { status: 500 });

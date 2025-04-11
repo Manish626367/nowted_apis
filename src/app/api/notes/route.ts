@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit;
 
   const conditions = [`notes.user_id = $1`];
-  const values: (string | number | boolean)[] = [userId];
+  const values: (string | number | boolean)[]= [userId];
   let i = 2;
 
   if (archived !== null) {
@@ -40,9 +40,10 @@ export async function GET(req: NextRequest) {
 
   if (deleted === 'true') {
     conditions.push(`notes.deleted_at IS NOT NULL`);
-  } else {
-    conditions.push(`notes.deleted_at IS NULL`);
-  }
+  } 
+  // else {
+  //   conditions.push(`notes.deleted_at IS NULL`);
+  // }
 
   if (folderId) {
     conditions.push(`notes.folder_id = $${i++}`);
@@ -77,6 +78,7 @@ export async function GET(req: NextRequest) {
       [...values, limit, offset]
     );
 
+    // -- our response formate structure
     const formattedNotes = result.rows.map((note) => ({
       id: note.id,
       folderId: note.folder_id,
@@ -106,10 +108,7 @@ export async function GET(req: NextRequest) {
 
 
 
-
-
 //-------- create new note --------
-
 
 export async function POST(req: Request) {
 
