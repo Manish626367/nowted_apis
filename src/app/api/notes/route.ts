@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
   if (deleted === 'true') {
     conditions.push(`notes.deleted_at IS NOT NULL`);
   } 
-  // else {
-  //   conditions.push(`notes.deleted_at IS NULL`);
-  // }
+  else {
+    conditions.push(`notes.deleted_at IS NULL`);
+  }
 
   if (folderId) {
     conditions.push(`notes.folder_id = $${i++}`);
@@ -121,13 +121,17 @@ export async function POST(req: Request) {
   
     try {
     
-        const folder = await client.query(
-          'select *from folders where id = $1 and user_id = (select id from users where email = $2) and deleted_at is null',[folderId,userEmail]
+      const duplicateCheck = await client.query(
+        'SELECT * FROM notes WHERE folder_id = $1 AND user_id = $2 AND title = $3 and deleted_at is null',
+        [folderId, userId, title]
+      );
+  
+      if (duplicateCheck.rows.length > 0) {
+        return NextResponse.json(
+          { message: 'A note with the same title already exists in this folder' },
+          { status: 409 }
         );
-    
-        if (folder.rows.length === 0) {
-          return NextResponse.json({ message: 'Folder not found ' }, { status: 404 });
-        }
+      }
     
         await client.query('insert into notes (folder_id, user_id, title, content, is_favorite, is_archived) values($1,$2,$3,$4,$5,$6)',[folderId,userId,title,content,is_favorite,is_archived])
         
@@ -139,5 +143,4 @@ export async function POST(req: Request) {
       }
     
   }
-  
   

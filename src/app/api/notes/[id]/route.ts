@@ -74,78 +74,188 @@ export async function GET(_req: Request, {params}: { params: { id: string } }) {
 // ------------------ update note --------------
 
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+// export async function PATCH(req: Request, { params }: { params: { id: string } }) {
    
-    const userId = req.headers.get('user-id');
-    const userEmail = req.headers.get('user-email');
+//     const userId = req.headers.get('user-id');
+//     const userEmail = req.headers.get('user-email');
     
-    if (!userId || !userEmail) {
-      return NextResponse.json({ error: "Login first" }, { status: 401 });
+//     if (!userId || !userEmail) {
+//       return NextResponse.json({ error: "Login first" }, { status: 401 });
+//     }
+  
+//     const noteId = params.id.trim();
+//     const body = await req.json();
+//     const { title, content, folderId ,is_archived,is_favorite} = body;
+  
+//     const updates: string[] = [];
+//     const values = [];
+//     let index = 1;
+  
+//     if (title !== undefined) {
+//       updates.push(`title = $${index++}`);
+//       values.push(title);
+//     }
+
+//     if(is_archived !== undefined){
+//       updates.push(`is_archived = $${index++}`);
+//       values.push(is_archived);
+//     }
+//     if(is_favorite !== undefined){
+//       updates.push(`is_favorite = $${index++}`);
+//       values.push(is_favorite);
+//     }
+    
+//     if (content !== undefined) {
+//       updates.push(`content = $${index++}`);
+//       values.push(content);
+//     }
+  
+//     if (folderId !== undefined) {
+//       updates.push(`folder_id = $${index++}`);
+//       values.push(folderId);
+//     }
+  
+//     if (updates.length === 0) {
+//       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+//     }
+  
+//     const query = `
+//       UPDATE notes 
+//       SET ${updates.join(", ")}, updated_at = current_timestamp
+//       WHERE id = $${index++} AND user_id = $${index}
+//       RETURNING *;
+//     `;
+  
+//     values.push(noteId, userId);
+  
+//     try {
+
+//       if (title !== undefined ) {
+
+//        let noteFolderId ;
+
+//        if (folderId === undefined) {
+
+//         const folderResult = await client.query(
+//           'SELECT folder_id FROM notes WHERE id = $1',
+//           [noteId]
+//         );
+
+//         noteFolderId = folderResult.rows[0].folder_id;
+
+//       } else {
+
+//         noteFolderId = folderId;
+
+//       }
+      
+//         const duplicateCheck = await client.query(
+//           'SELECT * FROM notes WHERE folder_id = $1 AND  title = $2 ',
+//           [noteFolderId,title]
+//         );
+
+//         if (duplicateCheck.rows.length > 0) {
+//           return NextResponse.json(
+//             { message: 'A note with the same title already exists in this folder' },
+//             { status: 409 }
+//           );
+//         }
+//       }
+//       const result = await client.query(query, values);
+  
+//       if (result.rowCount === 0) {
+//         return NextResponse.json({ error: "Note not found or unauthorized" }, { status: 404 });
+//       }
+  
+//       return NextResponse.json({ message: "Note updated successfully", note: result.rows[0] });
+//     } catch (error) {
+//       console.error("Update failed:", error);
+//       return NextResponse.json({ error: "Server error" }, { status: 500 });
+//     }
+//   }
+  
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const userId = req.headers.get('user-id');
+  const userEmail = req.headers.get('user-email');
+
+  if (!userId || !userEmail) {
+    return NextResponse.json({ error: "Login first" }, { status: 401 });
+  }
+
+  const noteId = params.id.trim();
+  const body = await req.json();
+  const { title, content, folderId, is_archived, is_favorite } = body;
+
+  const updates: string[] = [];
+  const values= [];
+  let index = 1;
+
+  const addUpdate = (key: string, value:unknown) => {
+    if (value !== undefined) {
+      updates.push(`${key} = $${index++}`);
+      values.push(value);
     }
-  
-    const noteId = params.id.trim();
-    const body = await req.json();
-    const { title, content, folderId ,is_archived,is_favorite} = body;
-  
-    const updates: string[] = [];
-    const values = [];
-    let index = 1;
-  
+  };
+
+  addUpdate("title", title);
+  addUpdate("is_archived", is_archived);
+  addUpdate("is_favorite", is_favorite);
+  addUpdate("content", content);
+  addUpdate("folder_id", folderId);
+
+  if (updates.length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
+
+  try {
+    console.log(title)
     if (title !== undefined) {
-      updates.push(`title = $${index++}`);
-      values.push(title);
+          const duplicateCheck = await client.query(
+          ' SELECT 1 FROM notes n1 JOIN notes n2 ON n1.folder_id = n2.folder_id WHERE n2.id = $1 AND n1.title = $2 AND n1.deleted_at IS NULL',
+          [noteId,title]
+        );
+         console.log("-=----->> "+duplicateCheck.rows.length)
+        if (duplicateCheck.rows.length > 0) {
+          return NextResponse.json(
+            { message: 'A note with the same title already exists in this folder' },
+            { status: 409 }
+          );
+        }
+      }
+
+      updates.push(`updated_at = current_timestamp`, `deleted_at = NULL`);
+
+      const query = `
+        UPDATE notes 
+        SET ${updates.join(", ")}
+        WHERE id = $${index++} AND user_id = $${index}
+        RETURNING *;
+      `;
+      
+      values.push(noteId, userId);
+      
+
+    console.log("query :  "+query);
+    console.log("values :  "+values)
+    
+
+    const result = await client.query(query, values);
+
+    console.log("result : "+result.rows[0])
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Note not found or unauthorized" }, { status: 404 });
     }
 
-    if(is_archived !== undefined){
-      updates.push(`is_archived = $${index++}`);
-      values.push(is_archived);
-    }
-    if(is_favorite !== undefined){
-      updates.push(`is_favorite = $${index++}`);
-      values.push(is_favorite);
-    }
-    
-    if (content !== undefined) {
-      updates.push(`content = $${index++}`);
-      values.push(content);
-    }
-  
-    if (folderId !== undefined) {
-      updates.push(`folder_id = $${index++}`);
-      values.push(folderId);
-    }
-  
-    if (updates.length === 0) {
-      return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
-    }
-  
-    const query = `
-      UPDATE notes 
-      SET ${updates.join(", ")}, updated_at = current_timestamp
-      WHERE id = $${index++} AND user_id = $${index}
-      RETURNING *;
-    `;
-  
-    values.push(noteId, userId);
-    console.log("QUERY:", query.trim());
-    console.log("VALUES:", values);
-  
-    try {
-      const result = await client.query(query, values);
-      console.log(result)
-     
-  
-      if (result.rowCount === 0) {
-        return NextResponse.json({ error: "Note not found or unauthorized" }, { status: 404 });
-      }
-  
-      return NextResponse.json({ message: "Note updated successfully", note: result.rows[0] });
-    } catch (error) {
-      console.error("Update failed:", error);
-      return NextResponse.json({ error: "Server error" }, { status: 500 });
-    }
+    return NextResponse.json({ message: "Note updated successfully", note: result.rows[0] });
+
+  } catch (error) {
+    console.error("Update failed:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-  
+}
+
 
 
 

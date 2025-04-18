@@ -41,6 +41,16 @@ export async function POST(req: NextRequest) {
   const { name } = await req.json();
 
   try {
+    const existing = await client.query(
+      'SELECT id FROM folders WHERE user_id = $1 AND name = $2 AND deleted_at IS NULL',
+      [userId, name]
+    );
+
+    if (existing.rows.length > 0) {
+      return NextResponse.json({ message: 'Folder with this name already exists' }, { status: 400 });
+    }
+
+
     const result = await client.query(
       'INSERT INTO folders (user_id, name) VALUES ($1, $2) RETURNING *',
       [userId, name]
